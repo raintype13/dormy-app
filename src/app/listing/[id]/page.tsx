@@ -3,9 +3,9 @@
 import { ArrowLeft, Heart, Share2, MapPin, Eye, Send, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 
-export default function ListingDetailPage() {
+function ListingDetailContent() {
   const params = useParams();
   const router = useRouter();
   const [isFavorite, setIsFavorite] = useState(false);
@@ -155,5 +155,13 @@ export default function ListingDetailPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function ListingDetailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-(--bg-page) flex items-center justify-center text-sm font-medium">Загрузка объявления...</div>}>
+      <ListingDetailContent />
+    </Suspense>
   );
 }

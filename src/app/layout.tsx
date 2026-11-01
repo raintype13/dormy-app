@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { BottomNavbar } from '@/components/BottomNavbar';
+import { Suspense } from 'react';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -22,7 +23,9 @@ export default function RootLayout({
           <div className="flex-1 pb-24">
             {children}
           </div>
-          <BottomNavbar />
+          <Suspense fallback={null}>
+            <BottomNavbar />
+          </Suspense>
         </div>
       </body>
     </html>
