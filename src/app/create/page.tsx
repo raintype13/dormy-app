@@ -1,12 +1,18 @@
 'use client';
 
-import { ArrowLeft, ImagePlus, DollarSign, MapPin } from 'lucide-react';
+import { ArrowLeft, ImagePlus, DollarSign, MapPin, Shield, UserCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState, ChangeEvent, FormEvent } from 'react';
+import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export default function CreateListingPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+
+  // Данные текущего пользователя и разработчика
+  const [currentUser, setCurrentUser] = useState<{ id: number; first_name: string } | null>(null);
+  const [targetTelegramId, setTargetTelegramId] = useState<string>('');
+  const DEVELOPER_ID = 1949612933;
 
   const [formData, setFormData] = useState({
     title: '',
@@ -18,8 +24,25 @@ export default function CreateListingPage() {
   });
 
   const [photos, setPhotos] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
 
   const availableTags = ['Wi-Fi', 'Отопление', 'Кондиционер', 'Стиралка', 'Холодильник', 'Балкон'];
+
+  useEffect(() => {
+    // Получаем реального юзера из Telegram WebApp
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.initDataUnsafe?.user) {
+      const tgUser = (window as any).Telegram.WebApp.initDataUnsafe.user;
+      setCurrentUser(tgUser);
+      setTargetTelegramId(tgUser.id.toString());
+    } else {
+      // Фолбэк для разработки в браузере (подставляем твой дев-аккаунт)
+      const mockUser = { id: DEVELOPER_ID, first_name: 'Loan Graves' };
+      setCurrentUser(mockUser);
+      setTargetTelegramId(mockUser.id.toString());
+    }
+  }, []);
+
+  const isDev = currentUser?.id === DEVELOPER_ID;
 
   const toggleTag = (tag: string) => {
     setFormData(prev => ({
@@ -33,7 +56,12 @@ export default function CreateListingPage() {
   const handlePhotoSelect = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const filesArray = Array.from(e.target.files);
-      setPhotos(prev => [...prev, ...filesArray].slice(0, 5));
+      const newPhotos = [...photos, ...filesArray].slice(0, 5);
+      setPhotos(newPhotos);
+
+      // Генерируем превью для отображения в инпуте
+      const newPreviews = newPhotos.map(file => URL.createObjectURL(file));
+      setPhotoPreviews(newPreviews);
     }
   };
 
@@ -41,21 +69,84 @@ export default function CreateListingPage() {
     e.preventDefault();
     setLoading(true);
 
-    const generatedId = `lst_${Math.random().toString(36).substring(2, 8)}`;
-
     try {
+      const activeTelegramId = isDev && targetTelegramId ? targetTelegramId : (currentUser?.id.toString() || '1949612933');
+
+      // 1. Считаем количество объявлений пользователя для создания красивого ID вида {telegram_id}_{index}
+      const { count, error: countError } = await supabase
+        .from('listings')
+        .select('*', { count: 'exact', head: true })
+        .eq('telegram_id', activeTelegramId);
+
+      if (countError) console.error('Ошибка подсчета:', countError);
+
+      const nextIndex = (count || 0) + 1;
+      const customId = `${activeTelegramId}_${nextIndex}`;
+
+      // 2. Загружаем фотографии в Supabase Storage (бакет "listing-photos")
+      const uploadedPhotoUrls: string[] = [];
+
+      for (const file of photos) {
+        const fileExt = file.name.split('.').pop();
+        for (const file of photos) {
+      const fileExt = file.name.split('.').pop();
+      // Исправленная строка (правильные скобки у Math.random().toString(36))
+      const fileName = `${customId}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('listing-photos')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('Ошибка загрузки фото:', uploadError.message);
+        continue;
+      }
+
+      // Получаем публичную ссылку на фото
+      const { data: publicURLData } = supabase.storage
+        .from('listing-photos')
+        .getPublicUrl(filePath);
+
+      if (publicURLData?.publicUrl) {
+        uploadedPhotoUrls.push(publicURLData.publicUrl);
+      }
+    }
+        const filePath = `${__filename}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('listing-photos')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error('Ошибка загрузки фото:', uploadError.message);
+          continue;
+        }
+
+        // Получаем публичную ссылку на фото
+        const { data: publicURLData } = supabase.storage
+          .from('listing-photos')
+          .getPublicUrl(filePath);
+
+        if (publicURLData?.publicUrl) {
+          uploadedPhotoUrls.push(publicURLData.publicUrl);
+        }
+      }
+
+      // 3. Формируем полезную нагрузку для сохранения в базу данных
       const payload = {
-        id: generatedId,
+        id: customId,
+        telegram_id: activeTelegramId,
         title: formData.title,
         price: Number(formData.price),
         type: formData.type,
         location_name: formData.locationName,
         description: formData.description,
         tags: formData.tags,
-        photos: [], // Пока передаем массив пустой, позже подключим загрузку file_id
+        photos: uploadedPhotoUrls, // Сохраняем реальные ссылки на фото из базы
       };
 
-      // Отправляем данные на наш серверный API-роут для сохранения в Supabase
+      // Отправляем данные на серверный API или напрямую в Supabase
       const response = await fetch('/api/listings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -65,14 +156,11 @@ export default function CreateListingPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Ошибка при сохранении');
+        throw new Error(result.error || 'Ошибка при сохранении в базу');
       }
 
-      console.log('Объявление успешно создано в базе:', result.listing);
-      alert(`Объявление успешно опубликовано! ID: ${generatedId}`);
-      
-      // Плавный переход на главную страницу без закрытия приложения
-      router.push('/');
+      alert(`Объявление успешно опубликовано! ID: ${customId}`);
+      router.push('/profile');
     } catch (err: any) {
       console.error('Ошибка отправки:', err);
       alert(`Не удалось опубликовать: ${err.message || 'Попробуйте снова'}`);
@@ -97,6 +185,26 @@ export default function CreateListingPage() {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         
+        {/* Блок прав разработчика: выбор от чьего имени публикация */}
+        {isDev && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-2">
+            <div className="flex items-center gap-2 text-amber-600 text-xs font-bold">
+              <Shield className="w-4 h-4" />
+              <span>Панель разработчика: Создание от имени пользователя</span>
+            </div>
+            <input 
+              type="text"
+              placeholder="Введите Telegram ID владельца объявления"
+              value={targetTelegramId}
+              onChange={e => setTargetTelegramId(e.target.value)}
+              className="w-full px-3 py-2 bg-(--input-bg) text-(--text-primary) rounded-xl text-xs font-mono border border-amber-500/30 focus:outline-none"
+            />
+            <p className="text-[10px] text-(--text-secondary)">
+              Текущий ID автора: <span className="font-mono font-bold text-amber-600">{targetTelegramId}</span>
+            </p>
+          </div>
+        )}
+
         {/* 1. Загрузка Фотографии */}
         <div className="space-y-2">
           <label className="text-xs font-bold text-(--text-secondary) uppercase tracking-wider block">
@@ -104,9 +212,9 @@ export default function CreateListingPage() {
           </label>
           
           <div className="grid grid-cols-3 gap-2">
-            {photos.map((_, index) => (
-              <div key={index} className="relative h-24 rounded-2xl bg-(--input-bg) overflow-hidden border border-(--card-border) flex items-center justify-center text-[10px] text-(--text-secondary) font-mono">
-                [Фото {index + 1}]
+            {photoPreviews.map((preview, index) => (
+              <div key={index} className="relative h-24 rounded-2xl bg-(--input-bg) overflow-hidden border border-(--card-border)">
+                <img src={preview} alt="" className="w-full h-full object-cover" />
               </div>
             ))}
 
@@ -249,7 +357,7 @@ export default function CreateListingPage() {
               disabled={loading}
               className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 transition-all cursor-pointer disabled:opacity-50"
             >
-              {loading ? 'Публикация...' : 'Опубликовать объявление'}
+              {loading ? 'Публикация и загрузка фото...' : 'Опубликовать объявление'}
             </button>
           </div>
         </div>

@@ -1,54 +1,111 @@
 'use client';
 
-import { User, PlusCircle, Heart, FileText, Settings, Shield, ChevronRight, Globe, Moon } from 'lucide-react';
+import { PlusCircle, FileText, MapPin, Trash2, Shield, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+
+interface Listing {
+  id: string;
+  title: string;
+  price: number;
+  location_name: string;
+  photos?: string[];
+  created_at: string;
+}
 
 export default function ProfilePage() {
-  const [isDark, setIsDark] = useState(false);
-  const [user, setUser] = useState<{ first_name: string; username?: string } | null>(null);
+  const [telegramUser, setTelegramUser] = useState<{ id: number; first_name: string; username?: string } | null>(null);
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Твой ID разработчика для спец. возможностей
+  const DEVELOPER_ID = 1949612933;
 
   useEffect(() => {
-    // Подтягивание имени из Telegram WebApp API
+    // Получаем данные из Telegram WebApp
     if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.initDataUnsafe?.user) {
-      setUser((window as any).Telegram.WebApp.initDataUnsafe.user);
+      const tgUser = (window as any).Telegram.WebApp.initDataUnsafe.user;
+      setTelegramUser(tgUser);
+      fetchUserListings(tgUser.id);
+    } else {
+      // Заглушка для разработки в браузере (можно временно поставить свой ID)
+      const mockUser = { id: DEVELOPER_ID, first_name: 'Loan Graves', username: 'loan_graves' };
+      setTelegramUser(mockUser);
+      fetchUserListings(mockUser.id);
     }
-
-    const savedTheme = localStorage.getItem('theme');
-    setIsDark(savedTheme === 'dark');
   }, []);
 
-  const toggleTheme = () => {
-    const newTheme = !isDark;
-    setIsDark(newTheme);
-    if (newTheme) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+  const fetchUserListings = async (userId: number) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('listings')
+        .select('*')
+        .eq('telegram_id', userId.toString())
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Ошибка загрузки объявлений:', error);
+      } else {
+        setListings(data || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Вы уверены, что хотите удалить это объявление?')) return;
+    
+    const { error } = await supabase.from('listings').delete().eq('id', id);
+    if (!error) {
+      setListings(listings.filter(item => item.id !== id));
+    } else {
+      alert('Ошибка при удалении');
+    }
+  };
+
+  const isDev = telegramUser?.id === DEVELOPER_ID;
 
   return (
     <main className="min-h-screen bg-(--bg-page) text-(--text-primary) p-4 space-y-6 pb-28">
       {/* Шапка профиля */}
-      <div className="pt-2 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-xl shadow-md ring-4 ring-blue-500/20">
-          {user?.first_name ? user.first_name[0] : 'U'}
-        </div>
-        <div>
-          <h1 className="text-lg font-black text-(--text-primary)">
-            {user?.first_name || 'Студент'}
-          </h1>
-          <p className="text-xs text-(--text-secondary) font-medium">
-            {user?.username ? `@${user.username}` : 'Telegram Пользователь'}
-          </p>
-          <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 text-[10px] font-bold">
-            Студент СамГУ
-          </span>
+      <div className="pt-2 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-xl shadow-md ring-4 ring-blue-500/20">
+            {telegramUser?.first_name ? telegramUser.first_name[0] : 'U'}
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-lg font-black text-(--text-primary)">
+                {telegramUser?.first_name || 'Студент'}
+              </h1>
+              {isDev && (
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 text-[10px] font-bold flex items-center gap-1">
+                  <Shield className="w-3 h-3" /> Dev
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-(--text-secondary) font-medium">
+              {telegramUser?.username ? `@${telegramUser.username}` : `ID: ${telegramUser?.id || 'не определен'}`}
+            </p>
+            <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 text-[10px] font-bold">
+              Студент СамГУ
+            </span>
+          </div>
         </div>
       </div>
+
+      {/* Индикатор прав разработчика */}
+      {isDev && (
+        <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 text-xs font-semibold flex items-center justify-between">
+          <span>Режим разработчика активен (доступна публикация за других)</span>
+          <Shield className="w-4 h-4 shrink-0" />
+        </div>
+      )}
 
       {/* Быстрое действие: Подать объявление */}
       <Link 
@@ -59,60 +116,70 @@ export default function ProfilePage() {
           <PlusCircle className="w-6 h-6 stroke-[2.2]" />
           <div>
             <div className="font-bold text-sm">Сдать или продать жильё</div>
-            <div className="text-[11px] text-white/80">Бесплатная публикация в Dormy</div>
+            <div className="text-[11px] text-white/80">Публикация от вашего Telegram аккаунта</div>
           </div>
         </div>
-        <ChevronRight className="w-5 h-5 text-white/70" />
       </Link>
 
-      {/* Разделы пользователя */}
-      <div className="space-y-2">
-        <h2 className="text-xs font-bold text-(--text-secondary) uppercase tracking-wider px-1">
-          Моя активность
-        </h2>
-        <div className="bg-(--card-bg) border border-(--card-border) rounded-2xl overflow-hidden divide-y divide-(--card-border)">
-          <Link href="/favorites" className="flex items-center justify-between p-3.5 hover:bg-(--input-bg) transition-colors">
-            <div className="flex items-center gap-3">
-              <Heart className="w-4 h-4 text-blue-600" />
-              <span className="text-xs font-semibold">Избранные варианты</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-(--text-secondary)" />
-          </Link>
-
-          <Link href="/my-listings" className="flex items-center justify-between p-3.5 hover:bg-(--input-bg) transition-colors">
-            <div className="flex items-center gap-3">
-              <FileText className="w-4 h-4 text-blue-600" />
-              <span className="text-xs font-semibold">Мои объявления</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-(--text-secondary)" />
-          </Link>
+      {/* Мои объявления */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-xs font-bold text-(--text-secondary) uppercase tracking-wider">
+            Мои объявления ({listings.length})
+          </h2>
         </div>
-      </div>
 
-      {/* Настройки приложения */}
-      <div className="space-y-2">
-        <h2 className="text-xs font-bold text-(--text-secondary) uppercase tracking-wider px-1">
-          Настройки
-        </h2>
-        <div className="bg-(--card-bg) border border-(--card-border) rounded-2xl overflow-hidden divide-y divide-(--card-border)">
-          <button onClick={toggleTheme} className="w-full flex items-center justify-between p-3.5 hover:bg-(--input-bg) transition-colors text-left cursor-pointer">
-            <div className="flex items-center gap-3">
-              <Moon className="w-4 h-4 text-blue-600" />
-              <span className="text-xs font-semibold">Тёмная тема</span>
-            </div>
-            <span className="text-xs font-bold text-(--text-secondary)">
-              {isDark ? 'Вкл' : 'Выкл'}
-            </span>
-          </button>
-
-          <div className="flex items-center justify-between p-3.5">
-            <div className="flex items-center gap-3">
-              <Globe className="w-4 h-4 text-blue-600" />
-              <span className="text-xs font-semibold">Язык интерфейса</span>
-            </div>
-            <span className="text-xs font-bold text-blue-600">Русский (RU)</span>
+        {loading ? (
+          <div className="text-center py-8 text-xs text-(--text-secondary)">Загрузка объявлений...</div>
+        ) : listings.length === 0 ? (
+          <div className="p-6 rounded-2xl bg-(--card-bg) border border-(--card-border) text-center space-y-2">
+            <FileText className="w-8 h-8 text-(--text-secondary) mx-auto opacity-50" />
+            <p className="text-xs font-medium text-(--text-secondary)">У вас пока нет активных объявлений</p>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-3">
+            {listings.map((item) => (
+              <div 
+                key={item.id}
+                className="p-3.5 rounded-2xl bg-(--card-bg) border border-(--card-border) flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-14 h-14 rounded-xl bg-(--input-bg) shrink-0 flex items-center justify-center text-xs text-(--text-secondary) font-semibold overflow-hidden">
+                    {item.photos && item.photos.length > 0 ? (
+                      <img src={item.photos[0]} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      'Фото'
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-bold text-(--text-primary) truncate">{item.title}</h3>
+                    <p className="text-xs font-black text-blue-600 mt-0.5">${item.price} <span className="text-[10px] text-(--text-secondary) font-normal">/ мес</span></p>
+                    <p className="text-[10px] text-(--text-secondary) truncate mt-0.5 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 shrink-0" /> {item.location_name || 'Самарканд'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  <Link 
+                    href={`/listing/${item.id}`}
+                    className="p-2 rounded-xl bg-(--input-bg) hover:bg-blue-600/10 text-blue-600 transition-colors"
+                    title="Посмотреть"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Link>
+                  <button 
+                    onClick={() => handleDelete(item.id)}
+                    className="p-2 rounded-xl bg-(--input-bg) hover:bg-red-500/10 text-red-500 transition-colors cursor-pointer"
+                    title="Удалить"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* О приложении */}

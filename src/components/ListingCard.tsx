@@ -11,6 +11,7 @@ interface ListingProps {
   daysAgo?: number;
   viewsCount?: number;
   tags?: string[];
+  photos?: string[];
 }
 
 export const ListingCard = ({
