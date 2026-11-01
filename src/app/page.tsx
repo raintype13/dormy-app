@@ -108,14 +108,16 @@ export default function HomePage() {
         ) : (
           listings.map(item => (
             <ListingCard 
-              key={item.id} 
-              title={item.title}
-              price={item.price}
-              type={item.type as 'Аренда' | 'Продажа'}
-              locationName={item.location_name}
-              tags={item.tags}
-              photos={item.photos}
-            />
+  key={item.id} 
+  telegram_id={item.telegram_id}
+  title={item.title}
+  price={item.price}
+  type={item.type as 'Аренда' | 'Продажа'}
+  locationName={item.location_name}
+  tags={item.tags}
+  photos={item.photos}
+  createdAt={item.created_at}
+/>
           ))
         )}
 
