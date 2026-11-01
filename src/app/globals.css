@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-page: #ffffff;
+    --text-primary: #09090b;
+    --text-secondary: #71717a;
+    --card-bg: #ffffff;
+    --card-border: #f4f4f5;
+    --input-bg: #f4f4f5;
+  }
+
+  html.dark {
+    --bg-page: #000000;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --card-bg: #121212;
+    --card-border: #27272a;
+    --input-bg: #18181b;
+  }
+
+  body {
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
