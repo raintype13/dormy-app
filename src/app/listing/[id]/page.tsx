@@ -83,7 +83,7 @@ export default function ListingDetailPage() {
           <span>Назад</span>
         </button>
         <span className="text-xs font-bold text-(--text-secondary)">Детали жилья</span>
-        <div className="w-9" /> {/* пустой блок для баланса */}
+        <div className="w-9" />
       </div>
 
       <div className="p-4 space-y-5 max-w-lg mx-auto">
@@ -143,7 +143,6 @@ export default function ListingDetailPage() {
             <span>{listing.location_name}</span>
           </div>
 
-          {/* Теги / Удобства */}
           {listing.tags && listing.tags.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-(--card-border)">
               {listing.tags.map((tag, i) => (
