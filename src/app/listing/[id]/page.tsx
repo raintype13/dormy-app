@@ -1,9 +1,11 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, MapPin, Eye, Send, ShieldCheck, Calendar } from 'lucide-react';
+import { ArrowLeft, MapPin, Eye, Send, ShieldCheck } from 'lucide-react';
 
 interface Listing {
   id: string;
