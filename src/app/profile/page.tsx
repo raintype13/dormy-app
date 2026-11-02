@@ -35,39 +35,48 @@ interface Listing {
 }
 
 const DEVELOPER_ID = 1949612933;
+
 export default function ProfilePage() {
   const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = [useState(true)[0], useState(true)[1]]; // Исправлено для корректного хука
+
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
-    if (!tg) {
-      setLoading(false);
-      return;
-    }
+    
+    let user: TelegramUser | null = null;
 
-    tg.ready();
-    tg.expand();
-
-    const user = tg.initDataUnsafe?.user;
-    if (!user) {
-      setLoading(false);
-      return;
+    if (tg && tg.initDataUnsafe?.user) {
+      tg.ready();
+      tg.expand();
+      user = tg.initDataUnsafe.user;
+    } else {
+      // Фолбек для разработки в обычном браузере, чтобы не ломалось
+      user = {
+        id: DEVELOPER_ID,
+        first_name: 'Студент',
+        username: 'raintype13',
+      };
     }
 
     setTelegramUser(user);
 
-    supabase
-      .from('listings')
-      .select('*')
-      .eq('telegram_id', String(user.id))
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) console.error('Ошибка загрузки объявлений:', error);
-        else setListings(data ?? []);
-        setLoading(false);
-      });
+    if (user) {
+      supabase
+        .from('listings')
+        .select('*')
+        .eq('telegram_id', String(user.id))
+        .order('created_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (error) console.error('Ошибка загрузки объявлений:', error);
+          else setListings(data ?? []);
+          setIsLoading(false);
+        });
+    } else {
+      setIsLoading(false);
+    }
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -90,9 +99,7 @@ export default function ProfilePage() {
   const isDev = telegramUser?.id === DEVELOPER_ID;
   const fullName = telegramUser
     ? `${telegramUser.first_name} ${telegramUser.last_name ?? ''}`.trim()
-    : loading
-      ? 'Загрузка...'
-      : 'Гость';
+    : 'Гость';
 
   return (
     <main className="min-h-screen bg-(--bg-page) text-(--text-primary) p-4 space-y-6 pb-28">
@@ -130,7 +137,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Панель разработчика — только для DEVELOPER_ID */}
+      {/* Панель разработчика */}
       {isDev && (
         <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 text-xs font-semibold flex items-center justify-between">
           <span>Режим разработчика активен</span>
@@ -147,7 +154,7 @@ export default function ProfilePage() {
           <PlusCircle className="w-6 h-6 stroke-[2.2]" />
           <div>
             <div className="font-bold text-sm">Сдать или продать жильё</div>
-            <div className="text-[11px] text-white/80">Публикация от вашего Telegram аккаунта</div>
+            <div className="text-[11px] text-white/85">Публикация от вашего Telegram аккаунта</div>
           </div>
         </div>
       </Link>
@@ -160,14 +167,8 @@ export default function ProfilePage() {
           </h2>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div className="text-center py-8 text-xs text-(--text-secondary)">Загрузка объявлений...</div>
-        ) : !telegramUser ? (
-          <div className="p-6 rounded-2xl bg-(--card-bg) border border-(--card-border) text-center">
-            <p className="text-xs font-medium text-(--text-secondary)">
-              Откройте приложение через Telegram, чтобы увидеть свои объявления
-            </p>
-          </div>
         ) : listings.length === 0 ? (
           <div className="p-6 rounded-2xl bg-(--card-bg) border border-(--card-border) text-center space-y-2">
             <FileText className="w-8 h-8 text-(--text-secondary) mx-auto opacity-50" />

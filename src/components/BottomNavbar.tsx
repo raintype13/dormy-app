@@ -1,63 +1,83 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Home, PlusCircle, Heart, User } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Home, Heart, User } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 export const BottomNavbar = () => {
   const pathname = usePathname();
-  const [userPhoto, setUserPhoto] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string>('Профиль');
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState<string | null>(null);
 
   useEffect(() => {
-    // Безопасное чтение данных пользователя из Telegram WebApp (с фолбеком на dev-режим)
     if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
       const tg = (window as any).Telegram.WebApp;
-      tg.ready();
-      const tgUser = tg.initDataUnsafe?.user;
+      const user = tg.initDataUnsafe?.user;
       
-      if (tgUser) {
-        if (tgUser.photo_url) setUserPhoto(tgUser.photo_url);
-        if (tgUser.first_name) setUserName(tgUser.first_name);
-      } else {
-        // Dev-режим для тестирования с фиксированным ID (1949612933)
-        setUserName('Студент (Dev)');
+      if (user) {
+        if (user.photo_url) {
+          setPhotoUrl(user.photo_url);
+        }
+        if (user.first_name) {
+          setFirstName(user.first_name);
+        }
       }
     }
   }, []);
 
-  const navItems = [
-    { href: '/', label: 'Главная', icon: Home },
-    { href: '/create', label: 'Разместить', icon: PlusCircle },
-    { href: '/favorites', label: 'Избранное', icon: Heart },
-    { 
-      href: '/profile', 
-      label: userName, 
-      icon: userPhoto ? () => <img src={userPhoto} alt="Avatar" className="w-5 h-5 rounded-full object-cover" /> : User 
-    },
-  ];
+  const isHidden = pathname.startsWith('/listing') || pathname.startsWith('/create');
+  if (isHidden) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-(--bg-page)/80 backdrop-blur-md border-t border-(--card-border)">
-      <div className="max-w-md mx-auto flex items-center justify-around bg-(--card-bg) p-2 rounded-2xl shadow-lg border border-(--card-border)">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
-                isActive ? 'text-blue-600 bg-blue-500/10 font-bold' : 'text-(--text-secondary) hover:text-(--text-primary)'
-              }`}
-            >
-              <Icon className="w-5 h-5" />
-              <span className="text-[10px] truncate max-w-17.5">{item.label}</span>
-            </Link>
-          );
-        })}
-      </div>
+    <div className="fixed bottom-5 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+      <nav className="w-full max-w-60 bg-transparent backdrop-blur-sm rounded-full py-2 px-4 pointer-events-auto transition-all">
+        <div className="flex items-center justify-between">
+          
+          {/* Главная — Домик */}
+          <Link 
+            href="/" 
+            className={`p-2 transition-opacity duration-200 ${
+              pathname === '/' ? 'opacity-100 scale-110' : 'opacity-50 hover:opacity-80'
+            }`}
+          >
+            <Home className="w-6 h-6 text-(--text-primary) stroke-2" />
+          </Link>
+
+          {/* Избранное — Сердце */}
+          <Link 
+            href="/favorites" 
+            className={`p-2 transition-opacity duration-200 ${
+              pathname === '/favorites' ? 'opacity-100 scale-110' : 'opacity-50 hover:opacity-80'
+            }`}
+          >
+            <Heart className="w-6 h-6 text-(--text-primary) stroke-2" />
+          </Link>
+
+          {/* Профиль — Аватар Telegram */}
+          <Link 
+            href="/profile" 
+            className={`p-1 transition-opacity duration-200 ${
+              pathname === '/profile' ? 'opacity-100 ring-2 ring-blue-600 rounded-full' : 'opacity-50 hover:opacity-80'
+            }`}
+          >
+            <div className="w-7 h-7 rounded-full bg-linear-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs overflow-hidden shrink-0">
+              {photoUrl ? (
+                <img 
+                  src={photoUrl} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover" 
+                />
+              ) : firstName ? (
+                <span className="text-[10px]">{firstName.charAt(0).toUpperCase()}</span>
+              ) : (
+                <User className="w-4 h-4 text-white" />
+              )}
+            </div>
+          </Link>
+
+        </div>
+      </nav>
     </div>
   );
 };
