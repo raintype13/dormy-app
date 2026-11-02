@@ -1,11 +1,9 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, MapPin, Eye, Send, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, MapPin, Send, ShieldCheck } from 'lucide-react';
 
 interface Listing {
   id: string;
@@ -20,7 +18,7 @@ interface Listing {
   created_at: string;
 }
 
-export default function ListingDetailPage() {
+function ListingDetailContent() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id;
@@ -189,5 +187,13 @@ export default function ListingDetailPage() {
 
       </div>
     </main>
+  );
+}
+
+export default function ListingDetailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-(--bg-page) flex items-center justify-center text-(--text-secondary) text-xs">Загрузка...</div>}>
+      <ListingDetailContent />
+    </Suspense>
   );
 }
