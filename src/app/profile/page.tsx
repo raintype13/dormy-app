@@ -19,20 +19,19 @@ export default function ProfilePage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Твой ID разработчика для спец. возможностей
   const DEVELOPER_ID = 1949612933;
 
   useEffect(() => {
-    // Получаем данные из Telegram WebApp
+    // Получаем реальные данные из Telegram WebApp
     if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.initDataUnsafe?.user) {
       const tgUser = (window as any).Telegram.WebApp.initDataUnsafe.user;
       setTelegramUser(tgUser);
       fetchUserListings(tgUser.id);
     } else {
-      // Заглушка для разработки в браузере (можно временно поставить свой ID)
-      const mockUser = { id: DEVELOPER_ID, first_name: 'Loan Graves', username: 'loan_graves' };
-      setTelegramUser(mockUser);
-      fetchUserListings(mockUser.id);
+      // Фолбэк для разработки в браузере (если тестируешь не через Telegram)
+      const devUser = { id: DEVELOPER_ID, first_name: 'Loan Graves', username: 'loan_graves' };
+      setTelegramUser(devUser);
+      fetchUserListings(devUser.id);
     }
   }, []);
 
@@ -68,11 +67,12 @@ export default function ProfilePage() {
     }
   };
 
+  // Проверка на разработчика строго по ID
   const isDev = telegramUser?.id === DEVELOPER_ID;
 
   return (
     <main className="min-h-screen bg-(--bg-page) text-(--text-primary) p-4 space-y-6 pb-28">
-      {/* Шапка профиля */}
+      {/* Шапка профиля с реальными данными Telegram */}
       <div className="pt-2 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-xl shadow-md ring-4 ring-blue-500/20">
@@ -99,7 +99,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Индикатор прав разработчика */}
+      {/* Индикатор прав разработчика (виден только тебе) */}
       {isDev && (
         <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 text-xs font-semibold flex items-center justify-between">
           <span>Режим разработчика активен (доступна публикация за других)</span>

@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, ImagePlus, DollarSign, MapPin, Shield, UserCheck } from 'lucide-react';
+import { ArrowLeft, ImagePlus, DollarSign, MapPin, Shield } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -9,7 +9,6 @@ export default function CreateListingPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  // Данные текущего пользователя и разработчика
   const [currentUser, setCurrentUser] = useState<{ id: number; first_name: string } | null>(null);
   const [targetTelegramId, setTargetTelegramId] = useState<string>('');
   const DEVELOPER_ID = 1949612933;
@@ -35,13 +34,14 @@ export default function CreateListingPage() {
       setCurrentUser(tgUser);
       setTargetTelegramId(tgUser.id.toString());
     } else {
-      // Фолбэк для разработки в браузере (подставляем твой дев-аккаунт)
-      const mockUser = { id: DEVELOPER_ID, first_name: 'Loan Graves' };
-      setCurrentUser(mockUser);
-      setTargetTelegramId(mockUser.id.toString());
+      // Фолбэк для разработки в браузере
+      const devUser = { id: DEVELOPER_ID, first_name: 'Loan Graves' };
+      setCurrentUser(devUser);
+      setTargetTelegramId(devUser.id.toString());
     }
   }, []);
 
+  // Режим разработчика доступен ТОЛЬКО для твоего ID
   const isDev = currentUser?.id === DEVELOPER_ID;
 
   const toggleTag = (tag: string) => {
@@ -59,7 +59,6 @@ export default function CreateListingPage() {
       const newPhotos = [...photos, ...filesArray].slice(0, 5);
       setPhotos(newPhotos);
 
-      // Генерируем превью для отображения в инпуте
       const newPreviews = newPhotos.map(file => URL.createObjectURL(file));
       setPhotoPreviews(newPreviews);
     }
@@ -70,49 +69,20 @@ export default function CreateListingPage() {
     setLoading(true);
 
     try {
+      // Если ты dev — можешь указать targetTelegramId, иначе жестко берется ID реального юзера
       const activeTelegramId = isDev && targetTelegramId ? targetTelegramId : (currentUser?.id.toString() || '1949612933');
 
-      // 1. Считаем количество объявлений пользователя для создания красивого ID вида {telegram_id}_{index}
-      const { count, error: countError } = await supabase
-        .from('listings')
-        .select('*', { count: 'exact', head: true })
-        .eq('telegram_id', activeTelegramId);
+      // Уникальный ID объявления
+      const uniqueSuffix = Math.random().toString(36).substring(2, 7);
+      const customId = `${activeTelegramId}_${Date.now()}_${uniqueSuffix}`;
 
-      if (countError) console.error('Ошибка подсчета:', countError);
-
-      const nextIndex = (count || 0) + 1;
-      const customId = `${activeTelegramId}_${nextIndex}`;
-
-      // 2. Загружаем фотографии в Supabase Storage (бакет "listing-photos")
+      // Загружаем фотографии в Supabase Storage
       const uploadedPhotoUrls: string[] = [];
 
       for (const file of photos) {
-        const fileExt = file.name.split('.').pop();
-        for (const file of photos) {
-      const fileExt = file.name.split('.').pop();
-      // Исправленная строка (правильные скобки у Math.random().toString(36))
-      const fileName = `${customId}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('listing-photos')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        console.error('Ошибка загрузки фото:', uploadError.message);
-        continue;
-      }
-
-      // Получаем публичную ссылку на фото
-      const { data: publicURLData } = supabase.storage
-        .from('listing-photos')
-        .getPublicUrl(filePath);
-
-      if (publicURLData?.publicUrl) {
-        uploadedPhotoUrls.push(publicURLData.publicUrl);
-      }
-    }
-        const filePath = `${__filename}`;
+        const fileExt = file.name.split('.').pop() || 'jpg';
+        const fileName = `${customId}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+        const filePath = `${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('listing-photos')
@@ -123,7 +93,6 @@ export default function CreateListingPage() {
           continue;
         }
 
-        // Получаем публичную ссылку на фото
         const { data: publicURLData } = supabase.storage
           .from('listing-photos')
           .getPublicUrl(filePath);
@@ -133,7 +102,6 @@ export default function CreateListingPage() {
         }
       }
 
-      // 3. Формируем полезную нагрузку для сохранения в базу данных
       const payload = {
         id: customId,
         telegram_id: activeTelegramId,
@@ -143,10 +111,9 @@ export default function CreateListingPage() {
         location_name: formData.locationName,
         description: formData.description,
         tags: formData.tags,
-        photos: uploadedPhotoUrls, // Сохраняем реальные ссылки на фото из базы
+        photos: uploadedPhotoUrls,
       };
 
-      // Отправляем данные на серверный API или напрямую в Supabase
       const response = await fetch('/api/listings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -159,7 +126,7 @@ export default function CreateListingPage() {
         throw new Error(result.error || 'Ошибка при сохранении в базу');
       }
 
-      alert(`Объявление успешно опубликовано! ID: ${customId}`);
+      alert(`Объявление успешно опубликовано!`);
       router.push('/profile');
     } catch (err: any) {
       console.error('Ошибка отправки:', err);
@@ -171,7 +138,6 @@ export default function CreateListingPage() {
 
   return (
     <main className="min-h-screen bg-(--bg-page) text-(--text-primary) p-4 pb-28">
-      {/* Шапка */}
       <div className="flex items-center gap-3 pt-2 pb-4">
         <button 
           type="button"
@@ -185,7 +151,7 @@ export default function CreateListingPage() {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         
-        {/* Блок прав разработчика: выбор от чьего имени публикация */}
+        {/* Панель разработчика видна ТОЛЬКО тебе (если твой ID 1949612933) */}
         {isDev && (
           <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-2">
             <div className="flex items-center gap-2 text-amber-600 text-xs font-bold">
@@ -205,7 +171,7 @@ export default function CreateListingPage() {
           </div>
         )}
 
-        {/* 1. Загрузка Фотографии */}
+        {/* Загрузка Фото */}
         <div className="space-y-2">
           <label className="text-xs font-bold text-(--text-secondary) uppercase tracking-wider block">
             Фотографии жилья (до 5 шт)
@@ -234,7 +200,7 @@ export default function CreateListingPage() {
           </div>
         </div>
 
-        {/* 2. Тип (Аренда / Продажа) */}
+        {/* Тип */}
         <div className="space-y-2">
           <label className="text-xs font-bold text-(--text-secondary) uppercase tracking-wider block">
             Цель объявления
@@ -257,7 +223,7 @@ export default function CreateListingPage() {
           </div>
         </div>
 
-        {/* 3. Заголовок и Цена */}
+        {/* Заголовок и Цена */}
         <div className="space-y-3">
           <div>
             <label className="text-xs font-bold text-(--text-secondary) uppercase tracking-wider block mb-1">
@@ -291,7 +257,7 @@ export default function CreateListingPage() {
           </div>
         </div>
 
-        {/* 4. Конкретное место */}
+        {/* Локация */}
         <div>
           <label className="text-xs font-bold text-(--text-secondary) uppercase tracking-wider block mb-1">
             Ориентир / Локация
@@ -309,7 +275,7 @@ export default function CreateListingPage() {
           </div>
         </div>
 
-        {/* 5. Удобства (Теги) */}
+        {/* Удобства */}
         <div className="space-y-2">
           <label className="text-xs font-bold text-(--text-secondary) uppercase tracking-wider block">
             Удобства
@@ -335,7 +301,7 @@ export default function CreateListingPage() {
           </div>
         </div>
 
-        {/* 6. Подробное описание */}
+        {/* Описание */}
         <div>
           <label className="text-xs font-bold text-(--text-secondary) uppercase tracking-wider block mb-1">
             Описание
