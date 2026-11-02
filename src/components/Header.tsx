@@ -1,6 +1,6 @@
 'use client';
 
-import { MapPin, Sun, Moon, Search, SlidersHorizontal, Globe } from 'lucide-react';
+import { MapPin, Sun, Moon, Search, SlidersHorizontal } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const DormyLogo = ({ className = "w-6 h-6" }: { className?: string }) => {
@@ -41,14 +41,21 @@ export const Header = () => {
   const [lang, setLang] = useState<'RU' | 'UZ' | 'EN'>('RU');
 
   useEffect(() => {
+    // Светлая тема по умолчанию, проверяем жесткую фиксацию в localStorage
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    if (savedTheme === 'dark') {
       setIsDark(true);
       document.documentElement.classList.add('dark');
     } else {
       setIsDark(false);
       document.documentElement.classList.remove('dark');
+      if (!savedTheme) {
+        localStorage.setItem('theme', 'light');
+      }
     }
+
+    const savedLang = localStorage.getItem('lang') as 'RU' | 'UZ' | 'EN';
+    if (savedLang) setLang(savedLang);
   }, []);
 
   const toggleTheme = () => {
@@ -63,29 +70,27 @@ export const Header = () => {
     }
   };
 
-  const cycleLang = () => {
-    const langs: ('RU' | 'UZ' | 'EN')[] = ['RU', 'UZ', 'EN'];
-    const nextLang = langs[(langs.indexOf(lang) + 1) % langs.length];
-    setLang(nextLang);
+  const changeLang = (newLang: 'RU' | 'UZ' | 'EN') => {
+    setLang(newLang);
+    localStorage.setItem('lang', newLang);
   };
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <div 
-      className="sticky top-0 z-40 pt-3 pb-8 px-4 space-y-3 backdrop-blur-md bg-(--bg-page)/80 transition-colors duration-200"
+      className="sticky top-0 z-40 pt-safe-top pt-4 pb-6 px-4 space-y-3 backdrop-blur-md bg-(--bg-page)/80 transition-colors duration-200"
       style={{
-        WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%)',
-        maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)',
+        maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)',
       }}
     >
       {/* Верхний ряд */}
       <div className="flex items-center justify-between">
         
-        {/* Логотип со скроллом наверх */}
+        {/* Логотип */}
         <button onClick={scrollToTop} className="flex items-center gap-2.5 group cursor-pointer text-left">
           <div className="w-10 h-10 rounded-2xl bg-(--input-bg) border border-(--card-border) flex items-center justify-center shadow-sm active:scale-95 transition-transform">
             <DormyLogo className="w-6 h-6" />
@@ -101,22 +106,39 @@ export const Header = () => {
           </div>
         </button>
 
-        {/* Настройки: Город + Язык + Тема */}
+        {/* Настройки: Город + Флаги языков + Тема */}
         <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-(--input-bg) text-(--text-primary) text-xs font-semibold">
+          <div className="flex items-center gap-1 px-2 py-1.5 rounded-full bg-(--input-bg) text-(--text-primary) text-xs font-semibold">
             <MapPin className="w-3.5 h-3.5 text-(--text-secondary)" />
             <span>Самарканд</span>
           </div>
 
-          <button 
-            onClick={cycleLang}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-(--input-bg) text-(--text-primary) text-xs font-bold hover:opacity-80 transition-opacity cursor-pointer"
-            title="Сменить язык"
-          >
-            <Globe className="w-3.5 h-3.5 text-(--text-secondary)" />
-            <span>{lang}</span>
-          </button>
+          {/* Переключатель языков с флагами */}
+          <div className="flex items-center gap-1 p-1 rounded-full bg-(--input-bg)">
+            <button 
+              onClick={() => changeLang('RU')}
+              className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center transition-all ${lang === 'RU' ? 'ring-2 ring-blue-600 scale-105' : 'opacity-60'}`}
+              title="Русский"
+            >
+              <span className="text-xs">🇷🇺</span>
+            </button>
+            <button 
+              onClick={() => changeLang('UZ')}
+              className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center transition-all ${lang === 'UZ' ? 'ring-2 ring-blue-600 scale-105' : 'opacity-60'}`}
+              title="O'zbekcha"
+            >
+              <span className="text-xs">🇺🇿</span>
+            </button>
+            <button 
+              onClick={() => changeLang('EN')}
+              className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center transition-all ${lang === 'EN' ? 'ring-2 ring-blue-600 scale-105' : 'opacity-60'}`}
+              title="English"
+            >
+              <span className="text-xs">🇬🇧</span>
+            </button>
+          </div>
 
+          {/* Переключатель темы */}
           <button 
             onClick={toggleTheme}
             className="flex items-center p-1 rounded-full bg-(--input-bg) transition-all cursor-pointer"
@@ -143,7 +165,7 @@ export const Header = () => {
           />
         </div>
         <button className="p-2.5 bg-(--input-bg) text-(--text-primary) rounded-2xl hover:opacity-80 transition-opacity">
-          <SlidersHorizontal className="w-4 h-4" />
+          <SlidersHorizontal className="w-4 h4" />
         </button>
       </div>
     </div>
