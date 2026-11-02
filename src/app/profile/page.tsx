@@ -5,26 +5,6 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
-interface TelegramUser {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
-}
-
-interface TelegramWebApp {
-  ready: () => void;
-  expand: () => void;
-  initDataUnsafe?: { user?: TelegramUser };
-}
-
-declare global {
-  interface Window {
-    Telegram?: { WebApp?: TelegramWebApp };
-  }
-}
-
 interface Listing {
   id: string;
   title: string;
@@ -34,110 +14,109 @@ interface Listing {
   created_at: string;
 }
 
-const DEVELOPER_ID = 1949612933;
-
 export default function ProfilePage() {
-  const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(null);
+  const [telegramUser, setTelegramUser] = useState<any>(null);
   const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading] = [useState(true)[0], useState(true)[1]]; // Исправлено для корректного хука
+  const [loading, setLoading] = useState(true);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const DEVELOPER_ID = 1949612933;
 
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    
-    let user: TelegramUser | null = null;
-
-    if (tg && tg.initDataUnsafe?.user) {
+    // Прямое считывание Telegram WebApp без задержек и мусора
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+      const tg = (window as any).Telegram.WebApp;
       tg.ready();
-      tg.expand();
-      user = tg.initDataUnsafe.user;
+      
+      const user = tg.initDataUnsafe?.user;
+      if (user) {
+        setTelegramUser(user);
+        fetchUserListings(user.id);
+      } else {
+        setLoading(false);
+      }
     } else {
-      // Фолбек для разработки в обычном браузере, чтобы не ломалось
-      user = {
-        id: DEVELOPER_ID,
-        first_name: 'Студент',
-        username: 'raintype13',
-      };
-    }
-
-    setTelegramUser(user);
-
-    if (user) {
-      supabase
-        .from('listings')
-        .select('*')
-        .eq('telegram_id', String(user.id))
-        .order('created_at', { ascending: false })
-        .then(({ data, error }) => {
-          if (error) console.error('Ошибка загрузки объявлений:', error);
-          else setListings(data ?? []);
-          setIsLoading(false);
-        });
-    } else {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (!telegramUser) return;
-    if (!confirm('Вы уверены, что хотите удалить это объявление?')) return;
+  const fetchUserListings = async (userId: number) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('listings')
+        .select('*')
+        .eq('telegram_id', userId.toString())
+        .order('created_at', { ascending: false });
 
-    const { error } = await supabase
-      .from('listings')
-      .delete()
-      .eq('id', id)
-      .eq('telegram_id', String(telegramUser.id));
-
-    if (error) {
-      alert('Ошибка при удалении');
-      return;
+      if (!error && data) {
+        setListings(data);
+      }
+    } catch (err) {
+      console.error('Ошибка загрузки объявлений:', err);
+    } finally {
+      setLoading(false);
     }
-    setListings((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const isDev = telegramUser?.id === DEVELOPER_ID;
-  const fullName = telegramUser
-    ? `${telegramUser.first_name} ${telegramUser.last_name ?? ''}`.trim()
-    : 'Гость';
+  const handleDelete = async (id: string) => {
+    if (!confirm('Вы уверены, что хотите удалить это объявление?')) return;
+    
+    const { error } = await supabase.from('listings').delete().eq('id', id);
+    if (!error) {
+      setListings(listings.filter(item => item.id !== id));
+    } else {
+      alert('Ошибка при удалении');
+    }
+  };
+
+  // Проверка на права разработчика строго по ID
+  const isDev = Number(telegramUser?.id) === DEVELOPER_ID;
 
   return (
     <main className="min-h-screen bg-(--bg-page) text-(--text-primary) p-4 space-y-6 pb-28">
       {/* Шапка профиля */}
-      <div className="pt-2 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-xl shadow-md ring-4 ring-blue-500/20 overflow-hidden shrink-0">
-          {telegramUser?.photo_url ? (
-            <img src={telegramUser.photo_url} alt="Profile" className="w-full h-full object-cover" />
-          ) : telegramUser?.first_name ? (
-            telegramUser.first_name.charAt(0).toUpperCase()
-          ) : (
-            <UserIcon className="w-8 h-8" />
-          )}
-        </div>
-
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-lg font-black text-(--text-primary)">{fullName}</h1>
-            {isDev && (
-              <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 text-[10px] font-bold flex items-center gap-1">
-                <Shield className="w-3 h-3" /> Dev
-              </span>
+      <div className="pt-2 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          
+          {/* Аватарка из Telegram или первая буква имени */}
+          <div className="w-16 h-16 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-xl shadow-md ring-4 ring-blue-500/20 overflow-hidden shrink-0">
+            {telegramUser?.photo_url ? (
+              <img 
+                src={telegramUser.photo_url} 
+                alt="Profile" 
+                className="w-full h-full object-cover"
+              />
+            ) : telegramUser?.first_name ? (
+              telegramUser.first_name.charAt(0).toUpperCase()
+            ) : (
+              <UserIcon className="w-8 h-8" />
             )}
           </div>
 
-          {telegramUser && (
+          <div>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-lg font-black text-(--text-primary)">
+                {telegramUser?.first_name || 'Загрузка...'} {telegramUser?.last_name || ''}
+              </h1>
+              {isDev && (
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 text-[10px] font-bold flex items-center gap-1">
+                  <Shield className="w-3 h-3" /> Dev
+                </span>
+              )}
+            </div>
+            
             <p className="text-xs text-(--text-secondary) font-medium">
-              {telegramUser.username ? `@${telegramUser.username}` : `ID: ${telegramUser.id}`}
+              {telegramUser?.username ? `@${telegramUser.username}` : telegramUser?.id ? `ID: ${telegramUser.id}` : ''}
             </p>
-          )}
-
-          <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 text-[10px] font-bold">
-            Студент
-          </span>
+            
+            <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 text-[10px] font-bold">
+              Студент
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Панель разработчика */}
+      {/* Панель разработчика — видна ТОЛЬКО аккаунту с ID 1949612933 */}
       {isDev && (
         <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 text-xs font-semibold flex items-center justify-between">
           <span>Режим разработчика активен</span>
@@ -146,7 +125,7 @@ export default function ProfilePage() {
       )}
 
       {/* Кнопка создания */}
-      <Link
+      <Link 
         href="/create"
         className="flex items-center justify-between p-4 rounded-2xl bg-linear-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-transform"
       >
@@ -154,20 +133,20 @@ export default function ProfilePage() {
           <PlusCircle className="w-6 h-6 stroke-[2.2]" />
           <div>
             <div className="font-bold text-sm">Сдать или продать жильё</div>
-            <div className="text-[11px] text-white/85">Публикация от вашего Telegram аккаунта</div>
+            <div className="text-[11px] text-white/80">Публикация от вашего Telegram аккаунта</div>
           </div>
         </div>
       </Link>
 
       {/* Мои объявления */}
       <div className="space-y-3">
-        <div className="px-1">
+        <div className="flex items-center justify-between px-1">
           <h2 className="text-xs font-bold text-(--text-secondary) uppercase tracking-wider">
             Мои объявления ({listings.length})
           </h2>
         </div>
 
-        {isLoading ? (
+        {loading ? (
           <div className="text-center py-8 text-xs text-(--text-secondary)">Загрузка объявлений...</div>
         ) : listings.length === 0 ? (
           <div className="p-6 rounded-2xl bg-(--card-bg) border border-(--card-border) text-center space-y-2">
@@ -177,7 +156,7 @@ export default function ProfilePage() {
         ) : (
           <div className="space-y-3">
             {listings.map((item) => (
-              <div
+              <div 
                 key={item.id}
                 className="p-3.5 rounded-2xl bg-(--card-bg) border border-(--card-border) flex items-center justify-between gap-3"
               >
@@ -191,9 +170,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-xs font-bold text-(--text-primary) truncate">{item.title}</h3>
-                    <p className="text-xs font-black text-blue-600 mt-0.5">
-                      ${item.price} <span className="text-[10px] text-(--text-secondary) font-normal">/ мес</span>
-                    </p>
+                    <p className="text-xs font-black text-blue-600 mt-0.5">${item.price} <span className="text-[10px] text-(--text-secondary) font-normal">/ мес</span></p>
                     <p className="text-[10px] text-(--text-secondary) truncate mt-0.5 flex items-center gap-1">
                       <MapPin className="w-3 h-3 shrink-0" /> {item.location_name || 'Локация не указана'}
                     </p>
@@ -201,14 +178,14 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
-                  <Link
+                  <Link 
                     href={`/listing/${item.id}`}
                     className="p-2 rounded-xl bg-(--input-bg) hover:bg-blue-600/10 text-blue-600 transition-colors"
                     title="Посмотреть"
                   >
                     <ExternalLink className="w-4 h-4" />
                   </Link>
-                  <button
+                  <button 
                     onClick={() => handleDelete(item.id)}
                     className="p-2 rounded-xl bg-(--input-bg) hover:bg-red-500/10 text-red-500 transition-colors cursor-pointer"
                     title="Удалить"

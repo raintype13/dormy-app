@@ -74,7 +74,7 @@ export const ListingCard = ({
   const viewsCount = getSimulatedViews(id);
 
   return (
-    <div className="bg-(--card-bg) rounded-3xl overflow-hidden transition-all duration-200 shadow-sm">
+    <div className="bg-(--card-bg) rounded-3xl overflow-hidden transition-all duration-200">
       
       {/* 1. Блок изображения */}
       <div className="relative h-52 bg-(--input-bg) flex items-center justify-center text-(--text-secondary) text-xs font-medium overflow-hidden">

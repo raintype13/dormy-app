@@ -70,7 +70,10 @@ export const Header = () => {
     }
   };
 
-  const changeLang = (newLang: 'RU' | 'UZ' | 'EN') => {
+  const changeLang = () => {
+    const languages: Array<'RU' | 'EN' | 'UZ'> = ['RU', 'EN', 'UZ'];
+    const currentIndex = languages.indexOf(lang);
+    const newLang = languages[(currentIndex + 1) % languages.length];
     setLang(newLang);
     localStorage.setItem('lang', newLang);
   };
@@ -81,7 +84,7 @@ export const Header = () => {
 
   return (
     <div 
-      className="sticky top-0 z-40 pt-safe-top pt-4 pb-6 px-4 space-y-3 backdrop-blur-md bg-(--bg-page)/80 transition-colors duration-200"
+      className="sticky top-0 z-40 pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-6 px-4 space-y-3 backdrop-blur-md bg-(--bg-page)/80 transition-colors duration-200"
       style={{
         WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)',
         maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)',
@@ -113,30 +116,18 @@ export const Header = () => {
             <span>Самарканд</span>
           </div>
 
-          {/* Переключатель языков с флагами */}
-          <div className="flex items-center gap-1 p-1 rounded-full bg-(--input-bg)">
-            <button 
-              onClick={() => changeLang('RU')}
-              className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center transition-all ${lang === 'RU' ? 'ring-2 ring-blue-600 scale-105' : 'opacity-60'}`}
-              title="Русский"
-            >
-              <span className="text-xs">🇷🇺</span>
-            </button>
-            <button 
-              onClick={() => changeLang('UZ')}
-              className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center transition-all ${lang === 'UZ' ? 'ring-2 ring-blue-600 scale-105' : 'opacity-60'}`}
-              title="O'zbekcha"
-            >
-              <span className="text-xs">🇺🇿</span>
-            </button>
-            <button 
-              onClick={() => changeLang('EN')}
-              className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center transition-all ${lang === 'EN' ? 'ring-2 ring-blue-600 scale-105' : 'opacity-60'}`}
-              title="English"
-            >
-              <span className="text-xs">🇬🇧</span>
-            </button>
-          </div>
+          {/* Однокнопочный переключатель языка: RU → EN → UZ */}
+          <button
+            onClick={changeLang}
+            className="flex h-8 items-center justify-center gap-1.5 rounded-full bg-(--input-bg) px-2.5 text-xs font-bold text-(--text-primary) transition-all active:scale-95"
+            title="Сменить язык"
+            aria-label={`Текущий язык ${lang}. Нажмите, чтобы сменить язык`}
+          >
+            <span aria-hidden="true">
+              {lang === 'RU' ? '🇷🇺' : lang === 'EN' ? '🇬🇧' : '🇺🇿'}
+            </span>
+            <span>{lang}</span>
+          </button>
 
           {/* Переключатель темы */}
           <button 
