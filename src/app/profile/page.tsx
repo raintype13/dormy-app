@@ -31,49 +31,23 @@ export default function ProfilePage() {
   const DEVELOPER_ID = 1949612933;
 
   useEffect(() => {
-    const initTelegramUser = () => {
-      if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.initDataUnsafe?.user) {
-        const tgUser = (window as any).Telegram.WebApp.initDataUnsafe.user as TelegramUser;
-        setTelegramUser(tgUser);
-        fetchUserListings(tgUser.id);
-        return true;
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+      const tg = (window as any).Telegram.WebApp;
+      const user = tg.initDataUnsafe?.user || null;
+      
+      if (user) {
+        setTelegramUser(user);
+        fetchUserListings(user.id);
+      } else {
+        // Если запущено в обычном браузере для теста на ПК
+        const mockUser: TelegramUser = {
+          id: DEVELOPER_ID,
+          first_name: 'Loan Graves',
+          username: 'loan_graves'
+        };
+        setTelegramUser(mockUser);
+        fetchUserListings(mockUser.id);
       }
-      return false;
-    };
-
-    // 1. Пробуем получить сразу
-    const success = initTelegramUser();
-
-    // 2. Если WebApp еще не прогрузился, ждем готовности скрипта Telegram
-    if (!success) {
-      const handleReady = () => {
-        initTelegramUser();
-      };
-
-      if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
-        (window as any).Telegram.WebApp.ready();
-        initTelegramUser();
-      }
-
-      // Небольшой тайм-аут на случай медленной инициализации SDK
-      const timer = setTimeout(() => {
-        if (!initTelegramUser()) {
-          // Если откроется в обычном браузере PC, только тогда включаем режим отладки
-          if (process.env.NODE_ENV === 'development') {
-            const devMock: TelegramUser = {
-              id: DEVELOPER_ID,
-              first_name: 'Dev Account',
-              username: 'developer'
-            };
-            setTelegramUser(devMock);
-            fetchUserListings(devMock.id);
-          } else {
-            setLoading(false);
-          }
-        }
-      }, 500);
-
-      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -109,7 +83,7 @@ export default function ProfilePage() {
     }
   };
 
-  // Проверка на разработчика: СТРОГО совпадение с ID 1949612933
+  // Проверка на разработчика: СТРОГО совпадение с твоею ID 1949612933
   const isDev = Number(telegramUser?.id) === DEVELOPER_ID;
 
   return (
@@ -123,11 +97,11 @@ export default function ProfilePage() {
             {telegramUser?.photo_url ? (
               <img 
                 src={telegramUser.photo_url} 
-                alt={telegramUser.first_name} 
+                alt="Profile" 
                 className="w-full h-full object-cover"
               />
             ) : telegramUser?.first_name ? (
-              telegramUser.first_name[0].toUpperCase()
+              telegramUser.first_name.charAt(0).toUpperCase()
             ) : (
               <UserIcon className="w-8 h-8" />
             )}
@@ -136,7 +110,7 @@ export default function ProfilePage() {
           <div>
             <div className="flex items-center gap-1.5">
               <h1 className="text-lg font-black text-(--text-primary)">
-                {telegramUser ? `${telegramUser.first_name}${telegramUser.last_name ? ' ' + telegramUser.last_name : ''}` : 'Загрузка...'}
+                {telegramUser?.first_name || 'Студент'} {telegramUser?.last_name || ''}
               </h1>
               {isDev && (
                 <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 text-[10px] font-bold flex items-center gap-1">
@@ -146,29 +120,25 @@ export default function ProfilePage() {
             </div>
             
             <p className="text-xs text-(--text-secondary) font-medium">
-              {telegramUser?.username 
-                ? `@${telegramUser.username}` 
-                : telegramUser?.id 
-                  ? `ID: ${telegramUser.id}` 
-                  : 'Определение аккаунта...'}
+              {telegramUser?.username ? `@${telegramUser.username}` : `ID: ${telegramUser?.id || 'не определен'}`}
             </p>
             
             <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 text-[10px] font-bold">
-              Студент
+              Студент СамГУ
             </span>
           </div>
         </div>
       </div>
 
-      {/* Панель разработчика — только для твоего ID */}
+      {/* Панель разработчика — только для твоего ID[cite: 10] */}
       {isDev && (
         <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 text-xs font-semibold flex items-center justify-between">
-          <span>Режим разработчика (доступны права администрирования)</span>
+          <span>Режим разработчика активен (доступна публикация за других)</span>
           <Shield className="w-4 h-4 shrink-0" />
         </div>
       )}
 
-      {/* Кнопка создания */}
+      {/* Быстрое действие: Подать объявление */}
       <Link 
         href="/create"
         className="flex items-center justify-between p-4 rounded-2xl bg-linear-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-transform"
@@ -177,7 +147,7 @@ export default function ProfilePage() {
           <PlusCircle className="w-6 h-6 stroke-[2.2]" />
           <div>
             <div className="font-bold text-sm">Сдать или продать жильё</div>
-            <div className="text-[11px] text-white/80">Публикация от вашего аккаунта</div>
+            <div className="text-[11px] text-white/80">Публикация от вашего Telegram аккаунта</div>
           </div>
         </div>
       </Link>
@@ -216,7 +186,7 @@ export default function ProfilePage() {
                     <h3 className="text-xs font-bold text-(--text-primary) truncate">{item.title}</h3>
                     <p className="text-xs font-black text-blue-600 mt-0.5">${item.price} <span className="text-[10px] text-(--text-secondary) font-normal">/ мес</span></p>
                     <p className="text-[10px] text-(--text-secondary) truncate mt-0.5 flex items-center gap-1">
-                      <MapPin className="w-3 h-3 shrink-0" /> {item.location_name || 'Локация не указана'}
+                      <MapPin className="w-3 h-3 shrink-0" /> {item.location_name || 'Самарканд'}
                     </p>
                   </div>
                 </div>
@@ -243,6 +213,7 @@ export default function ProfilePage() {
         )}
       </div>
 
+      {/* О приложении */}
       <div className="text-center pt-4">
         <p className="text-[11px] font-bold text-(--text-secondary)">Dormy v1.0.0 — Student Housing</p>
         <p className="text-[10px] text-(--text-secondary)/70 mt-0.5">Live closer. Study better.</p>
