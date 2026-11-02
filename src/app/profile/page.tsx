@@ -35,74 +35,39 @@ interface Listing {
 }
 
 const DEVELOPER_ID = 1949612933;
-const TG_SCRIPT_SRC = 'https://telegram.org/js/telegram-web-app.js';
-
-/**
- * Возвращает Telegram WebApp. Если SDK ещё не загружен — подключает скрипт
- * и ждёт его onload (без таймаутов и поллинга).
- */
-function getTelegramWebApp(): Promise<TelegramWebApp | null> {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined') return resolve(null);
-    if (window.Telegram?.WebApp) return resolve(window.Telegram.WebApp);
-
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${TG_SCRIPT_SRC}"]`);
-    const script = existing ?? document.createElement('script');
-
-    script.addEventListener('load', () => resolve(window.Telegram?.WebApp ?? null), { once: true });
-    script.addEventListener('error', () => resolve(null), { once: true });
-
-    if (!existing) {
-      script.src = TG_SCRIPT_SRC;
-      script.async = true;
-      document.head.appendChild(script);
-    }
-  });
-}
-
 export default function ProfilePage() {
   const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      const tg = await getTelegramWebApp();
-      if (cancelled) return;
-
-      if (!tg) {
-        setLoading(false);
-        return;
-      }
-
-      tg.ready();
-      tg.expand();
-
-      const user = tg.initDataUnsafe?.user;
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      setTelegramUser(user);
-
-      const { data, error } = await supabase
-        .from('listings')
-        .select('*')
-        .eq('telegram_id', String(user.id))
-        .order('created_at', { ascending: false });
-
-      if (cancelled) return;
-      if (error) console.error('Ошибка загрузки объявлений:', error);
-      else setListings(data ?? []);
+    const tg = window.Telegram?.WebApp;
+    if (!tg) {
       setLoading(false);
-    })();
+      return;
+    }
 
-    return () => {
-      cancelled = true;
-    };
+    tg.ready();
+    tg.expand();
+
+    const user = tg.initDataUnsafe?.user;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    setTelegramUser(user);
+
+    supabase
+      .from('listings')
+      .select('*')
+      .eq('telegram_id', String(user.id))
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) console.error('Ошибка загрузки объявлений:', error);
+        else setListings(data ?? []);
+        setLoading(false);
+      });
   }, []);
 
   const handleDelete = async (id: string) => {
