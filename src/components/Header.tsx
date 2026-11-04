@@ -83,9 +83,11 @@ export const Header = () => {
 
   return (
     <div 
-      className="sticky top-0 z-40 pb-4 px-4 space-y-3 backdrop-blur-md bg-(--bg-page)/90 border-b border-(--card-border) transition-colors duration-200"
+      className="sticky top-0 z-40 pb-6 px-4 space-y-3 backdrop-blur-md bg-(--bg-page)/85 transition-colors duration-200"
       style={{ 
-        paddingTop: 'calc(env(safe-area-inset-top, 20px) + 16px)' 
+        paddingTop: 'calc(env(safe-area-inset-top, 24px) + 20px)',
+        WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 85%, rgba(0,0,0,0) 100%)',
+        maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 85%, rgba(0,0,0,0) 100%)',
       }}
     >
       {/* Верхний ряд */}
