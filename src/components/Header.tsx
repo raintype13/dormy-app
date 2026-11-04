@@ -41,7 +41,6 @@ export const Header = () => {
   const [lang, setLang] = useState<'RU' | 'UZ' | 'EN'>('RU');
 
   useEffect(() => {
-    // Светлая тема по умолчанию, проверяем жесткую фиксацию в localStorage
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
       setIsDark(true);
@@ -84,10 +83,9 @@ export const Header = () => {
 
   return (
     <div 
-      className="sticky top-0 z-40 pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-6 px-4 space-y-3 backdrop-blur-md bg-(--bg-page)/80 transition-colors duration-200"
-      style={{
-        WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)',
-        maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)',
+      className="sticky top-0 z-40 pb-4 px-4 space-y-3 backdrop-blur-md bg-(--bg-page)/90 border-b border-(--card-border) transition-colors duration-200"
+      style={{ 
+        paddingTop: 'calc(env(safe-area-inset-top, 20px) + 16px)' 
       }}
     >
       {/* Верхний ряд */}
@@ -109,21 +107,20 @@ export const Header = () => {
           </div>
         </button>
 
-        {/* Настройки: Город + Флаги языков + Тема */}
+        {/* Настройки: Город + Язык + Тема */}
         <div className="flex items-center gap-1.5">
           <div className="flex items-center gap-1 px-2 py-1.5 rounded-full bg-(--input-bg) text-(--text-primary) text-xs font-semibold">
             <MapPin className="w-3.5 h-3.5 text-(--text-secondary)" />
             <span>Самарканд</span>
           </div>
 
-          {/* Однокнопочный переключатель языка: RU → EN → UZ */}
+          {/* Переключатель языка: RU → EN → UZ */}
           <button
             onClick={changeLang}
-            className="flex h-8 items-center justify-center gap-1.5 rounded-full bg-(--input-bg) px-2.5 text-xs font-bold text-(--text-primary) transition-all active:scale-95"
+            className="flex h-8 items-center justify-center gap-1 rounded-full bg-(--input-bg) px-2.5 text-xs font-bold text-(--text-primary) transition-all active:scale-95 cursor-pointer"
             title="Сменить язык"
-            aria-label={`Текущий язык ${lang}. Нажмите, чтобы сменить язык`}
           >
-            <span aria-hidden="true">
+            <span>
               {lang === 'RU' ? '🇷🇺' : lang === 'EN' ? '🇬🇧' : '🇺🇿'}
             </span>
             <span>{lang}</span>
@@ -155,8 +152,8 @@ export const Header = () => {
             className="w-full pl-10 pr-4 py-2.5 bg-(--input-bg) text-(--text-primary) rounded-2xl text-xs font-medium placeholder:text-(--text-secondary) focus:outline-none transition-all"
           />
         </div>
-        <button className="p-2.5 bg-(--input-bg) text-(--text-primary) rounded-2xl hover:opacity-80 transition-opacity">
-          <SlidersHorizontal className="w-4 h4" />
+        <button className="p-2.5 bg-(--input-bg) text-(--text-primary) rounded-2xl hover:opacity-80 transition-opacity cursor-pointer">
+          <SlidersHorizontal className="w-4 h-4" />
         </button>
       </div>
     </div>
