@@ -41,6 +41,7 @@ export const Header = () => {
   const [lang, setLang] = useState<'RU' | 'UZ' | 'EN'>('RU');
 
   useEffect(() => {
+    // Светлая тема по умолчанию, проверяем жесткую фиксацию в localStorage
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
       setIsDark(true);
@@ -82,17 +83,20 @@ export const Header = () => {
   };
 
   return (
-    <div 
-      className="sticky top-0 z-40 pb-6 px-4 space-y-3 backdrop-blur-md bg-(--bg-page)/85 transition-colors duration-200"
-      style={{ 
-        paddingTop: 'calc(env(safe-area-inset-top, 24px) + 20px)',
-        WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 85%, rgba(0,0,0,0) 100%)',
-        maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 85%, rgba(0,0,0,0) 100%)',
+    <div
+      /*
+        Верхний отступ = вырез/островок iPhone (safe-area) + кнопки Telegram в полноэкранном режиме
+        (--tg-content-safe-area-inset-top) + небольшой зазор.
+        Переменные --tg-* выставляет telegram-web-app.js; без них (обычный браузер) значения = 0.
+      */
+      className="sticky top-0 z-40 pt-[calc(max(env(safe-area-inset-top,0px),var(--tg-safe-area-inset-top,0px))+var(--tg-content-safe-area-inset-top,0px)+1rem)] pb-6 px-4 space-y-3 backdrop-blur-md bg-(--bg-page)/80 transition-colors duration-200"
+      style={{
+        WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)',
+        maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)',
       }}
     >
       {/* Верхний ряд */}
       <div className="flex items-center justify-between">
-        
         {/* Логотип */}
         <button onClick={scrollToTop} className="flex items-center gap-2.5 group cursor-pointer text-left">
           <div className="w-10 h-10 rounded-2xl bg-(--input-bg) border border-(--card-border) flex items-center justify-center shadow-sm active:scale-95 transition-transform">
@@ -109,27 +113,28 @@ export const Header = () => {
           </div>
         </button>
 
-        {/* Настройки: Город + Язык + Тема */}
+        {/* Настройки: Город + Флаги языков + Тема */}
         <div className="flex items-center gap-1.5">
           <div className="flex items-center gap-1 px-2 py-1.5 rounded-full bg-(--input-bg) text-(--text-primary) text-xs font-semibold">
             <MapPin className="w-3.5 h-3.5 text-(--text-secondary)" />
             <span>Самарканд</span>
           </div>
 
-          {/* Переключатель языка: RU → EN → UZ */}
+          {/* Однокнопочный переключатель языка: RU → EN → UZ */}
           <button
             onClick={changeLang}
-            className="flex h-8 items-center justify-center gap-1 rounded-full bg-(--input-bg) px-2.5 text-xs font-bold text-(--text-primary) transition-all active:scale-95 cursor-pointer"
+            className="flex h-8 items-center justify-center gap-1.5 rounded-full bg-(--input-bg) px-2.5 text-xs font-bold text-(--text-primary) transition-all active:scale-95"
             title="Сменить язык"
+            aria-label={`Текущий язык ${lang}. Нажмите, чтобы сменить язык`}
           >
-            <span>
+            <span aria-hidden="true">
               {lang === 'RU' ? '🇷🇺' : lang === 'EN' ? '🇬🇧' : '🇺🇿'}
             </span>
             <span>{lang}</span>
           </button>
 
           {/* Переключатель темы */}
-          <button 
+          <button
             onClick={toggleTheme}
             className="flex items-center p-1 rounded-full bg-(--input-bg) transition-all cursor-pointer"
             title="Переключить тему"
@@ -148,13 +153,13 @@ export const Header = () => {
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-(--text-secondary)" />
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder="Ориентир, вуз или район..."
             className="w-full pl-10 pr-4 py-2.5 bg-(--input-bg) text-(--text-primary) rounded-2xl text-xs font-medium placeholder:text-(--text-secondary) focus:outline-none transition-all"
           />
         </div>
-        <button className="p-2.5 bg-(--input-bg) text-(--text-primary) rounded-2xl hover:opacity-80 transition-opacity cursor-pointer">
+        <button className="p-2.5 bg-(--input-bg) text-(--text-primary) rounded-2xl hover:opacity-80 transition-opacity">
           <SlidersHorizontal className="w-4 h-4" />
         </button>
       </div>
