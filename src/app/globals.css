@@ -29,10 +29,6 @@
   }
 }
 
-.tg-safe-top {
-  padding-top: calc(
-    max(env(safe-area-inset-top, 0px), var(--tg-safe-area-inset-top, 0px))
-    + var(--tg-content-safe-area-inset-top, 0px)
-    + 1rem
-  );
+@utility tg-safe-top {
+  padding-top: calc(max(env(safe-area-inset-top, 0px), var(--tg-safe-area-inset-top, 0px)) + var(--tg-content-safe-area-inset-top, 0px) + 1rem);
 }

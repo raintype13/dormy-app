@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
 import { BottomNavbar } from '@/components/BottomNavbar';
+import { TelegramInit } from '@/components/TelegramInit';
 import { Suspense } from 'react';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -26,6 +27,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} min-h-screen antialiased flex justify-center`}>
+        <TelegramInit />
         <div className="w-full max-w-md min-h-screen flex flex-col relative">
           <div className="flex-1 pb-24">
             {children}
