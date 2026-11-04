@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
@@ -69,7 +69,7 @@ function formatPrice(price: number, currency?: string | null) {
   return `${formatted} сум`;
 }
 
-export default function ListingDetailPage() {
+function ListingDetailContent() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
 
@@ -318,5 +318,19 @@ export default function ListingDetailPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function ListingDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-(--bg-page) text-(--text-secondary) flex items-center justify-center px-5">
+          <p className="text-sm">Загрузка объявления...</p>
+        </main>
+      }
+    >
+      <ListingDetailContent />
+    </Suspense>
   );
 }
