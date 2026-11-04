@@ -27,7 +27,9 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} min-h-screen antialiased flex justify-center`}>
-        <TelegramInit />
+        <Suspense fallback={null}>
+          <TelegramInit />
+        </Suspense>
         <div className="w-full max-w-md min-h-screen flex flex-col relative">
           <div className="flex-1 pb-24">
             {children}
